@@ -1,80 +1,66 @@
 // js/subsistema.js
 
-const SubsistemaIA = {
-    async generarRespuesta(promptUsuario) {
-        const formData = new FormData();
-        formData.append('mensaje', promptUsuario);
-
-        const res = await fetch('config/acciones.php?accion=enviar_mensaje', {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await res.json();
-        if (data.status === 'ok') {
-            return data.respuesta;
-        } else {
-            throw new Error(data.mensaje || 'Error en el motor local.');
-        }
-    }
-};
-
-async function verificarEstadoIA() {
-    try {
-        const res = await fetch('api/subsistema.php?accion=estado');
-        const data = await res.json();
-        actualizarUIMotor(data.activo);
-    } catch (e) {
-        actualizarUIMotor(false);
-    }
-}
-
-function actualizarUIMotor(activo) {
-    const dots = document.querySelectorAll('.ia-status-dot');
-    const texts = document.querySelectorAll('.ia-status-text');
-    const btns = document.querySelectorAll('.ia-status-btn');
-
-    dots.forEach(dot => {
-        dot.style.background = activo ? '#00e676' : '#ff4d4d';
-    });
-
-    texts.forEach(text => {
-        text.innerText = activo ? 'Online' : 'Offline';
-    });
-
-    btns.forEach(btn => {
-        if (activo) {
-            btn.innerText = 'Apagar Motor';
-            btn.style.background = '#d32f2f';
-            btn.style.color = '#fff';
-        } else {
-            btn.innerText = 'Encender Motor';
-            btn.style.background = 'var(--accent-blue, #00d2ff)';
-            btn.style.color = '#000';
-        }
-        btn.disabled = false;
-    });
-}
-
-async function toggleMotorIA() {
-    const btns = document.querySelectorAll('.ia-status-btn');
-    const texts = document.querySelectorAll('.ia-status-text');
-
-    btns.forEach(btn => btn.disabled = true);
-    texts.forEach(text => text.innerText = 'Procesando...');
-
-    const estaActivo = Array.from(btns).some(b => b.innerText.includes('Apagar'));
-    const accion = estaActivo ? 'detener' : 'iniciar';
-
-    try {
-        await fetch(`api/subsistema.php?accion=${accion}`);
-        setTimeout(verificarEstadoIA, 4000);
-    } catch (e) {
-        verificarEstadoIA();
-    }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
+    const btnIniciar = document.getElementById('btn-iniciar-ia');
+    const btnDetener = document.getElementById('btn-detener-ia');
+    const badgeEstado = document.getElementById('estado-ia-badge');
+
+    // Función para consultar el estado del motor local
+    function verificarEstadoIA() {
+        fetch('api/subsistema.php?accion=estado')
+            .then(res => res.json())
+            .then(data => {
+                if (badgeEstado) {
+                    if (data.activo) {
+                        badgeEstado.textContent = 'En Línea';
+                        badgeEstado.className = 'badge bg-success';
+                    } else {
+                        badgeEstado.textContent = 'Fuera de Línea';
+                        badgeEstado.className = 'badge bg-danger';
+                    }
+                }
+            })
+            .catch(err => console.error('Error al consultar estado de IA:', err));
+    }
+
+    // Encender motor local (KoboldCpp)
+    if (btnIniciar) {
+        btnIniciar.addEventListener('click', () => {
+            btnIniciar.disabled = true;
+            fetch('api/subsistema.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ accion: 'iniciar' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.mensaje || 'Comando de inicio enviado.');
+                setTimeout(verificarEstadoIA, 3000);
+            })
+            .catch(err => console.error('Error al iniciar IA:', err))
+            .finally(() => btnIniciar.disabled = false);
+        });
+    }
+
+    // Detener motor local
+    if (btnDetener) {
+        btnDetener.addEventListener('click', () => {
+            btnDetener.disabled = true;
+            fetch('api/subsistema.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ accion: 'detener' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.mensaje || 'Comando de detención enviado.');
+                setTimeout(verificarEstadoIA, 1000);
+            })
+            .catch(err => console.error('Error al detener IA:', err))
+            .finally(() => btnDetener.disabled = false);
+        });
+    }
+
+    // Monitoreo inicial de estado
     verificarEstadoIA();
-    setInterval(verificarEstadoIA, 5000);
 });
