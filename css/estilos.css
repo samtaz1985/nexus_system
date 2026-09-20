@@ -1,0 +1,175 @@
+:root {
+    --bg-dark: #0f111a;
+    --card-bg: #1a1d29;
+    --border-color: #2a2e3d;
+    --accent-blue: #00d2ff;
+    --text-main: #ffffff;
+    --text-muted: #a0a5b5;
+    --status-green: #10b981;
+}
+
+* {
+    box-sizing: border-box !important;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    display: flex;
+    overflow-x: hidden;
+}
+
+/* Sidebar estático a la izquierda */
+.sidebar {
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    background-color: var(--card-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    height: 100vh;
+}
+
+/* Área principal: Obliga a ocupar el 100% del espacio derecho */
+.main-content {
+    flex: 1 1 auto !important;
+    width: calc(100vw - 260px) !important;
+    padding: 30px !important;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Forzar a todas las tarjetas a expandirse horizontalmente */
+.card, .chat-container, .main-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    background-color: var(--card-bg);
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 20px;
+    box-sizing: border-box !important;
+}
+
+/* Grid automático para los módulos */
+.grid-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    width: 100% !important;
+    margin-top: 15px;
+}
+
+/* --- MÓDULO DE TAREAS --- */
+.modulo-tareas {
+    background-color: var(--sidebar-color, #1a1d29);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: #e1e1e6;
+}
+
+.modulo-tareas h2 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: #ffffff;
+}
+
+.modulo-tareas h3 {
+    font-size: 0.95rem;
+    margin: 15px 0 10px 0;
+    color: #a8a8b3;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-tarea {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.form-tarea input[type="text"] {
+    flex: 1;
+    background: #0f111a;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.form-tarea button {
+    background: #4a6fa5;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.form-tarea button:hover {
+    background: #5b82bc;
+}
+
+.lista-tareas {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.lista-tareas li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.lista-tareas li.vacio {
+    color: #737380;
+    font-style: italic;
+    background: transparent;
+}
+
+.lista-tareas.completadas del {
+    color: #737380;
+}
+
+.btn-check {
+    background: #2e7d32;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-undo {
+    background: #424242;
+    color: #e0e0e0;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-check:hover { background: #388e3c; }
+.btn-undo:hover { background: #616161; }

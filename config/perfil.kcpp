@@ -1,0 +1,13 @@
+{
+  "usevulkan": [
+    1
+  ],
+  "maingpu": 0,
+  "contextsize": 4096,
+  "gpulayers": 29,
+  "threads": 2,
+  "port": 5001,
+  "port_param": 5001,
+  "skiplauncher": true,
+  "showgui": false
+}
