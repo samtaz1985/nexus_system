@@ -4,10 +4,12 @@
 class KoboldControl {
     private $host = 'http://127.0.0.1:5001';
     private $launcherPath;
-
+    private $workingDir;
 
     public function __construct() {
-        $this->launcherPath = __DIR__ . '\\lanzador_ia.exe';
+        // Normalizar rutas para evitar fallos de escape en Windows
+        $this->workingDir = __DIR__;
+        $this->launcherPath = __DIR__ . DIRECTORY_SEPARATOR . 'lanzador_ia.exe';
     }
 
     /**
@@ -27,18 +29,23 @@ class KoboldControl {
     }
 
     /**
-     * Inicia el subsistema ejecutando lanzador_ia.exe
+     * Inicia el subsistema ejecutando lanzador_ia.exe forzando el directorio de trabajo.
      */
     public function iniciar() {
         if ($this->estaActivo()) {
             return ["status" => "ok", "message" => "El subsistema ya está activo."];
         }
 
+        if (!file_exists($this->launcherPath)) {
+            return ["status" => "error", "message" => "No se encontró el ejecutable: " . $this->launcherPath];
+        }
+
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $cmd = 'start /B "" "' . $this->launcherPath . '"';
+            // cd /d impone el directorio donde reside lanzador_ia.exe antes de invocarlo
+            $cmd = 'cmd /c "cd /d "' . $this->workingDir . '" && start /B "" "' . $this->launcherPath . '""';
             pclose(popen($cmd, "r"));
         } else {
-            $cmd = '"' . $this->launcherPath . '" > /dev/null 2>&1 &';
+            $cmd = 'cd "' . $this->workingDir . '" && "' . $this->launcherPath . '" > /dev/null 2>&1 &';
             exec($cmd);
         }
 
@@ -46,7 +53,7 @@ class KoboldControl {
     }
 
     /**
-     * Detiene el proceso koboldcpp.exe
+     * Detiene el proceso koboldcpp.exe y el lanzador si sigue en ejecución.
      */
     public function detener() {
         if (!$this->estaActivo()) {
@@ -54,9 +61,11 @@ class KoboldControl {
         }
 
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            exec("taskkill /F /IM koboldcpp.exe 2>&1");
+            exec("taskkill /F /IM koboldcpp.exe /T 2>&1");
+            exec("taskkill /F /IM lanzador_ia.exe /T 2>&1");
         } else {
             exec("pkill -f koboldcpp");
+            exec("pkill -f lanzador_ia");
         }
 
         return ["status" => "ok", "message" => "Subsistema detenido correctamente."];

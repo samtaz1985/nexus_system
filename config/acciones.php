@@ -9,6 +9,8 @@ header('Content-Type: application/json; charset=utf-8');
 // Carga la conexión PDO y el registrador de logs
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/logger.php';
+require_once __DIR__ . '/rag.php'; // Inclusión del filtro de RAG dinámico
+
 
 // Capturar acción desde GET, POST o JSON
 $inputJSON = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -69,22 +71,11 @@ switch ($accion) {
             }
         }
 
-        // Consultar memorias activas
-        $contextoMemoria = "";
-        if (isset($pdo)) {
-            try {
-                $stmt = $pdo->query("SELECT tipo, clave, valor FROM nexus_memoria ORDER BY relevancia DESC LIMIT 5");
-                $memoriasBD = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                if (!empty($memoriasBD)) {
-                    $mLista = [];
-                    foreach ($memoriasBD as $m) {
-                        $mLista[] = "- " . strtoupper($m['tipo']) . " (" . $m['clave'] . "): " . $m['valor'];
-                    }
-                    $contextoMemoria = "\n\nReglas y memorias activas del sistema:\n" . implode("\n", $mLista);
-                }
-            } catch (Exception $e) {}
-        }
+        // Consultar memorias activas dinámicamente mediante RAG
+        $contextoMemoriaRaw = obtenerContextoRelevante($mensaje, 5);
+        $contextoMemoria = !empty($contextoMemoriaRaw) 
+            ? "\n\nReglas y memorias activas del sistema:\n" . $contextoMemoriaRaw 
+            : "";
 
         // System Prompt
         $systemPrompt = "Eres NIAH, una IA integrada al panel local 'Nexus System'.\n"
@@ -173,7 +164,7 @@ switch ($accion) {
                 'respuesta' => $respuestaIA
             ]);
         } else {
-            registrarLog('chat_backend', 'error_respuesta', 'Respuesta inválida o vacía de KoboldCpp', 'error');
+            registrarLog('chat_backend', 'error_respuesta', 'Respuesta inválida o vacía de KoboldCpp', 'error');
             echo json_encode([
                 'status' => 'error',
                 'mensaje' => 'Respuesta no válida de KoboldCpp.'

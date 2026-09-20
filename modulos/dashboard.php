@@ -72,22 +72,38 @@ if (isset($pdo)) {
 (function() {
     async function cargarEstadoMotor() {
         try {
-            const resIA = await fetch('api/subsistema.php?accion=estado');
-            const dataIA = await resIA.json();
-            const elem = document.getElementById('dash-ia-status');
-            if (elem) {
-                elem.innerText = dataIA.activo ? 'ONLINE' : 'OFFLINE';
-                elem.style.color = dataIA.activo ? '#00e676' : '#ff4d4d';
+            const res = await fetch('api/subsistema.php');
+            const data = await res.json();
+            
+            // Actualizar estado de IA (KoboldCpp)
+            const elemIA = document.getElementById('dash-ia-status');
+            if (elemIA) {
+                const iaActiva = data.servicios && data.servicios.koboldcpp;
+                elemIA.innerText = iaActiva ? 'ONLINE' : 'OFFLINE';
+                elemIA.style.color = iaActiva ? '#00e676' : '#ff4d4d';
             }
+
+            // Opcional: Si tienes un indicador para la BD en el HTML, puedes descomentar esto
+            /*
+            const elemDB = document.getElementById('dash-db-status');
+            if (elemDB) {
+                const dbActiva = data.servicios && data.servicios.database;
+                elemDB.innerText = dbActiva ? 'ONLINE' : 'OFFLINE';
+                elemDB.style.color = dbActiva ? '#00e676' : '#ff4d4d';
+            }
+            */
         } catch (e) {
-            const elem = document.getElementById('dash-ia-status');
-            if (elem) {
-                elem.innerText = 'OFFLINE';
-                elem.style.color = '#ff4d4d';
+            const elemIA = document.getElementById('dash-ia-status');
+            if (elemIA) {
+                elemIA.innerText = 'OFFLINE';
+                elemIA.style.color = '#ff4d4d';
             }
         }
     }
 
     cargarEstadoMotor();
+    
+    // Ejecutar cada 10 segundos para mantener el monitoreo en tiempo real
+    setInterval(cargarEstadoMotor, 10000);
 })();
 </script>
