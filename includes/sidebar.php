@@ -25,5 +25,6 @@
         <a href="index.php?mod=tareas" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">📋 Tareas y Notas</a>
         <a href="index.php?mod=memoria" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">🧠 Memoria</a>
         <a href="index.php?mod=configuracion" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">⚙️ Configuración</a>
+        <a href="index.php?mod=logs" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">📜 Auditoría Logs</a>
     </nav>
 </aside>

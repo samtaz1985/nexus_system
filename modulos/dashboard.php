@@ -63,6 +63,8 @@ if (isset($pdo)) {
         <a href="index.php?mod=chat" style="padding: 10px 20px; background: #4a6fa5; color: #fff; font-weight: bold; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">🤖 Ir al Chat IA</a>
         <a href="index.php?mod=tareas" style="padding: 10px 20px; background: rgba(255,255,255,0.08); color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">📋 Ver Tareas</a>
         <a href="index.php?mod=memoria" style="padding: 10px 20px; background: rgba(255,255,255,0.08); color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">💾 Gestionar Memoria</a>
+        <!-- Nuevo acceso a Logs -->
+        <a href="index.php?mod=logs" style="padding: 10px 20px; background: rgba(255,255,255,0.08); color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">📜 Auditoría Logs</a>
     </div>
 </div>
 

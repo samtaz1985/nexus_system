@@ -6,8 +6,9 @@ ini_set('display_errors', 0);
 if (ob_get_length()) ob_clean();
 header('Content-Type: application/json; charset=utf-8');
 
-// Carga la conexión PDO a la base de datos
+// Carga la conexión PDO y el registrador de logs
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/logger.php';
 
 // Capturar acción desde GET, POST o JSON
 $inputJSON = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -39,15 +40,17 @@ switch ($accion) {
             exit;
         }
 
-        // Guardar mensaje del usuario en la BD (ENUM 'user')
+        // Guardar mensaje del usuario en la BD
         if (isset($pdo)) {
             try {
                 $stmt = $pdo->prepare("INSERT INTO chat_mensajes (remitente, mensaje) VALUES ('user', ?)");
                 $stmt->execute([$mensaje]);
-            } catch (Exception $e) {}
+            } catch (Exception $e) {
+                registrarLog('chat_backend', 'error_bd_user', $e->getMessage(), 'error');
+            }
         }
 
-        // Consultar tareas pendientes actualizadas desde MySQL
+        // Consultar tareas pendientes
         $contextoTareas = "No hay tareas pendientes en la base de datos.";
         if (isset($pdo)) {
             try {
@@ -66,7 +69,7 @@ switch ($accion) {
             }
         }
 
-        // Consultar memorias activas desde MySQL
+        // Consultar memorias activas
         $contextoMemoria = "";
         if (isset($pdo)) {
             try {
@@ -83,7 +86,7 @@ switch ($accion) {
             } catch (Exception $e) {}
         }
 
-        // System Prompt Optimizado
+        // System Prompt
         $systemPrompt = "Eres NIAH, una IA integrada al panel local 'Nexus System'.\n"
                       . "REGLAS FUNDAMENTALES:\n"
                       . "1. Responde SIEMPRE en español de forma directa, técnica y concisa.\n"
@@ -97,22 +100,12 @@ switch ($accion) {
                         . "### User:\n" . $mensaje . "\n\n"
                         . "### Assistant:\n";
 
-        // Payload optimizado para KoboldCpp
+        // Payload simplificado para KoboldCpp
         $payload = json_encode([
             'prompt' => $promptCompleto,
             'max_context_length' => 2048,
             'max_length' => 180,
-            'temperature' => 0.1,
-            'top_p' => 0.85,
-            'rep_pen' => 1.2,
-            'stop_sequence' => [
-                "\n### User:", 
-                "\n### Assistant:", 
-                "\n### System:", 
-                "###",
-                "User:", 
-                "Assistant:"
-            ]
+            'temperature' => 0.1
         ]);
 
         $url = 'http://127.0.0.1:5001/api/v1/generate';
@@ -127,8 +120,10 @@ switch ($accion) {
         $curl_error = curl_error($ch);
         curl_close($ch);
 
+        // Error cURL
         if ($curl_error) {
-            echo json_encode(['status' => 'error', 'mensaje' => 'Error de cURL: ' . $curl_error]);
+            registrarLog('chat_backend', 'error_curl', $curl_error, 'error');
+            echo json_encode(['status' => 'error', 'mensaje' => 'Error al conectar con KoboldCpp.']);
             exit;
         }
 
@@ -137,7 +132,7 @@ switch ($accion) {
         if (is_array($data) && isset($data['results'][0]['text'])) {
             $respuestaIA = trim($data['results'][0]['text']);
 
-            // 1. Cortar si el modelo intenta reimprimir etiquetas o frases de contexto
+            // Puntos de corte para evitar eco del sistema
             $puntosDeCorte = [
                 '=== CONTEXTO DEL SISTEMA ===',
                 'Regras y memorias activas del sistema:',
@@ -151,7 +146,7 @@ switch ($accion) {
                 }
             }
 
-            // 2. Filtro de sanitización backend de etiquetas residuales
+            // Sanitización backend
             $patronesLimpieza = [
                 '/=== (BEGINNING|END) OF (CONTEXT|RESPONSE) ===/i',
                 '/=== CONTEXTO (DEL SISTEMA|REAL) ===/i',
@@ -160,12 +155,17 @@ switch ($accion) {
             ];
             $respuestaIA = trim(preg_replace($patronesLimpieza, '', $respuestaIA));
 
-            // Guardar respuesta de NIAH limpia en BD
+            // Guardar respuesta de NIAH en la BD
             if (isset($pdo) && !empty($respuestaIA)) {
                 try {
                     $stmt = $pdo->prepare("INSERT INTO chat_mensajes (remitente, mensaje) VALUES ('nexus', ?)");
                     $stmt->execute([$respuestaIA]);
-                } catch (Exception $e) {}
+                    
+                    // Registro en auditoría
+                    registrarLog('chat_backend', 'mensaje_procesado', 'Respuesta generada y guardada correctamente.', 'success');
+                } catch (Exception $e) {
+                    registrarLog('chat_backend', 'error_bd_nexus', $e->getMessage(), 'error');
+                }
             }
 
             echo json_encode([
@@ -173,6 +173,7 @@ switch ($accion) {
                 'respuesta' => $respuestaIA
             ]);
         } else {
+            registrarLog('chat_backend', 'error_respuesta', 'Respuesta inválida o vacía de KoboldCpp', 'error');
             echo json_encode([
                 'status' => 'error',
                 'mensaje' => 'Respuesta no válida de KoboldCpp.'
@@ -185,11 +186,13 @@ switch ($accion) {
         try {
             if (isset($pdo)) {
                 $pdo->exec("TRUNCATE TABLE chat_mensajes");
+                registrarLog('chat_backend', 'vaciar_chat', 'Historial de mensajes eliminado.', 'info');
                 echo json_encode(['status' => 'ok', 'mensaje' => 'Historial eliminado.']);
             } else {
                 echo json_encode(['status' => 'error', 'mensaje' => 'Sin conexión a la BD.']);
             }
         } catch (Exception $e) {
+            registrarLog('chat_backend', 'error_vaciar_chat', $e->getMessage(), 'error');
             echo json_encode(['status' => 'error', 'mensaje' => 'Error BD: ' . $e->getMessage()]);
         }
         exit;

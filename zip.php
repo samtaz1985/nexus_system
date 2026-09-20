@@ -1,7 +1,7 @@
 <?php
-// zip.php - Empaquetado de Nexus System v1.0.1
+// zip.php - Empaquetado de Nexus System v1.1.0
 $zip = new ZipArchive();
-$filename = "nexus_system_v1.0.1.zip";
+$filename = "nexus_system_v1.1.0.zip";
 
 if ($zip->open($filename, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
     $files = new RecursiveIteratorIterator(
@@ -14,7 +14,6 @@ if ($zip->open($filename, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) 
             $filePath = $file->getRealPath();
             $relativePath = substr($filePath, strlen(__DIR__) + 1);
 
-            // Excluir archivos comprimidos previos y el propio script
             if (preg_match('/\.zip$/i', $relativePath) || $relativePath === 'zip.php') {
                 continue;
             }

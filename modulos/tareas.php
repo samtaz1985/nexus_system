@@ -66,10 +66,16 @@ if (isset($pdo)) {
 
                 <!-- Mapeo del Análisis de NIAH -->
                 <?php if (!empty($t['resultado_ia'])): ?>
-                    <div style="margin-top: 12px; padding: 10px; background: #0f111a; border-radius: 6px; font-size: 0.9em; border: 1px solid #2a2e3d;">
-                        <strong style="color: var(--accent-color, #4e73df);">🤖 Análisis / Solución de NIAH:</strong>
-                        <p style="margin: 6px 0 0 0; color: #d1d5db; white-space: pre-line;"><?= htmlspecialchars($t['resultado_ia']) ?></p>
-                        <small style="color: #666; font-size: 0.8em; display: block; margin-top: 4px;">Procesado el: <?= $t['fecha_procesado'] ?></small>
+                    <div style="margin-top: 12px; padding: 12px; background: #0f111a; border-radius: 6px; font-size: 0.9em; border: 1px solid #2a2e3d;">
+                        <strong style="color: var(--accent-color, #4e73df); display: block; margin-bottom: 8px;">🤖 Análisis / Solución de NIAH:</strong>
+                        <div style="color: #d1d5db; line-height: 1.5; white-space: pre-line;">
+                            <?php 
+                                // Convertir negritas markdown (**texto**) a html (<strong>texto</strong>)
+                                $textoFormateado = preg_replace('/\*\*(.*?)\*\*/s', '<strong>$1</strong>', htmlspecialchars($t['resultado_ia']));
+                                echo $textoFormateado;
+                            ?>
+                        </div>
+                        <small style="color: #666; font-size: 0.8em; display: block; margin-top: 10px;">Procesado el: <?= $t['fecha_procesado'] ?></small>
                     </div>
                 <?php endif; ?>
             </div>

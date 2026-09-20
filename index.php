@@ -9,12 +9,17 @@
 <body>
     <div class="app-container" style="display: flex; height: 100vh; width: 100%;">
 
-        <!-- El sidebar debe estar dentro del contenedor flex para alinearse correctamente -->
+        <!-- Sidebar / Navegación -->
         <?php include 'includes/sidebar.php'; ?>
 
+        <!-- Contenido Dinámico de Módulos -->
         <main class="main-content" style="flex: 1; padding: 20px; box-sizing: border-box; overflow-y: auto;">
             <?php 
-                $modulo = isset($_GET['mod']) ? $_GET['mod'] : 'dashboard';
+                // Lista blanca de módulos autorizados
+                $modulosPermitidos = ['dashboard', 'chat', 'tareas', 'memoria', 'configuracion', 'logs'];
+                
+                // Sanitización del parámetro GET
+                $modulo = isset($_GET['mod']) && in_array($_GET['mod'], $modulosPermitidos) ? $_GET['mod'] : 'dashboard';
                 $archivo = "modulos/{$modulo}.php";
 
                 if (file_exists($archivo)) {
