@@ -90,14 +90,11 @@ switch ($accion) {
                 ? "\n\nReglas y memorias activas del sistema:\n" . $contextoMemoriaRaw 
                 : "";
 
-            $systemPrompt = "Eres NIAH, una IA integrada al panel local 'Nexus System'.\n"
-                          . "REGLAS FUNDAMENTALES:\n"
-                          . "1. Responde SIEMPRE en español de forma directa, técnica y concisa.\n"
-                          . "2. Utiliza la información del CONTEXTO REAL para responder al usuario.\n"
-                          . "3. No repitas saludos, ni uses adornos innecesarios.\n\n"
-                          . "=== CONTEXTO DEL SISTEMA ===\n"
-                          . $contextoTareas . "\n"
-                          . $contextoMemoria;
+            $systemPrompt = "Eres NIAH, la inteligencia artificial integrada al panel local 'Nexus System'.\n"
+              . "Responde de forma directa, técnica y concisa sin repetir las instrucciones del sistema ni incluir frases de cortesía innecesarias.\n\n"
+              . "=== CONTEXTO REAL ===\n"
+              . $contextoTareas . "\n"
+              . $contextoMemoria;
 
             $promptCompleto = "### System:\n" . $systemPrompt . "\n\n"
                             . "### User:\n" . $mensaje . "\n\n"
@@ -107,9 +104,9 @@ switch ($accion) {
                 'prompt' => $promptCompleto,
                 'max_context_length' => 2048,
                 'max_length' => 512,             // Aumentado a 512 para evitar cortes abruptos
-                'temperature' => 0.2,            // Ligera variación para evitar frases idénticas
+                'temperature' => 0.16,            // Ligera variación para evitar frases idénticas
                 'rep_pen' => 1.18,               // Penalización de repetición para eliminar muletillas
-                'stop_sequence' => ["### User:", "### System:", "### Assistant:", "=== CONTEXTO"]
+                'stop_sequence' => ["### User:", "### System:", "### Assistant:", "=== CONTEXTO", "=== END"]
             ]);
 
             $url = 'http://127.0.0.1:5001/api/v1/generate';
@@ -126,14 +123,17 @@ switch ($accion) {
             $data = json_decode($response, true);
             $respuestaIA = trim($data['results'][0]['text'] ?? 'Sin respuesta del motor de IA.');
 
-            // Sanitización
-            $puntosDeCorte = ['=== CONTEXTO', '### User:'];
+        // Sanitización estricta contra alucinaciones de cierre
+            $puntosDeCorte = ['=== CONTEXTO', '=== END', '### User:', 'SIEMPRE EN ESPAÑOL'];
             foreach ($puntosDeCorte as $corte) {
                 if (($pos = strpos($respuestaIA, $corte)) !== false) {
                     $respuestaIA = substr($respuestaIA, 0, $pos);
                 }
             }
-            $respuestaIA = trim(preg_replace('/### (User|Assistant|System):/i', '', $respuestaIA));
+
+            // Regex para barrer etiquetas remanentes
+            $respuestaIA = trim(preg_replace('/===\s*END.*$/is', '', $respuestaIA));
+            $respuestaIA = trim(preg_replace('/###\s*(User|Assistant|System):?/i', '', $respuestaIA));
         }
 
         // Guardar la respuesta de NIAH en la base de datos
