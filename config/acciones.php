@@ -6,9 +6,10 @@ ini_set('display_errors', 0);
 if (ob_get_length()) ob_clean();
 header('Content-Type: application/json; charset=utf-8');
 
-// Carga la conexión PDO y el registrador de logs
+// Carga la conexión PDO, el registrador de logs y RAG
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/logger.php';
+require_once __DIR__ . '/rag.php';
 
 // Capturar acción desde GET, POST o JSON
 $inputJSON = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -69,22 +70,11 @@ switch ($accion) {
             }
         }
 
-        // Consultar memorias activas
-        $contextoMemoria = "";
-        if (isset($pdo)) {
-            try {
-                $stmt = $pdo->query("SELECT tipo, clave, valor FROM nexus_memoria ORDER BY relevancia DESC LIMIT 5");
-                $memoriasBD = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                if (!empty($memoriasBD)) {
-                    $mLista = [];
-                    foreach ($memoriasBD as $m) {
-                        $mLista[] = "- " . strtoupper($m['tipo']) . " (" . $m['clave'] . "): " . $m['valor'];
-                    }
-                    $contextoMemoria = "\n\nReglas y memorias activas del sistema:\n" . implode("\n", $mLista);
-                }
-            } catch (Exception $e) {}
-        }
+        // Consultar memorias activas dinámicamente mediante RAG
+        $contextoMemoriaRaw = obtenerContextoRelevante($mensaje, 5);
+        $contextoMemoria = !empty($contextoMemoriaRaw) 
+            ? "\n\nReglas y memorias activas del sistema:\n" . $contextoMemoriaRaw 
+            : "";
 
         // System Prompt
         $systemPrompt = "Eres NIAH, una IA integrada al panel local 'Nexus System'.\n"
@@ -100,12 +90,13 @@ switch ($accion) {
                         . "### User:\n" . $mensaje . "\n\n"
                         . "### Assistant:\n";
 
-        // Payload simplificado para KoboldCpp
+        // Payload con secuencias de corte explícitas para KoboldCpp
         $payload = json_encode([
             'prompt' => $promptCompleto,
             'max_context_length' => 2048,
-            'max_length' => 180,
-            'temperature' => 0.1
+            'max_length' => 256,
+            'temperature' => 0.1,
+            'stop_sequence' => ["### User:", "### System:", "### Assistant:", "=== CONTEXTO DEL SISTEMA ==="]
         ]);
 
         $url = 'http://127.0.0.1:5001/api/v1/generate';
@@ -120,7 +111,6 @@ switch ($accion) {
         $curl_error = curl_error($ch);
         curl_close($ch);
 
-        // Error cURL
         if ($curl_error) {
             registrarLog('chat_backend', 'error_curl', $curl_error, 'error');
             echo json_encode(['status' => 'error', 'mensaje' => 'Error al conectar con KoboldCpp.']);
@@ -132,12 +122,12 @@ switch ($accion) {
         if (is_array($data) && isset($data['results'][0]['text'])) {
             $respuestaIA = trim($data['results'][0]['text']);
 
-            // Puntos de corte para evitar eco del sistema
+            // Puntos de corte para evitar eco
             $puntosDeCorte = [
                 '=== CONTEXTO DEL SISTEMA ===',
-                'Regras y memorias activas del sistema:',
                 'Reglas y memorias activas del sistema:',
-                'Lista actual de tareas pendientes'
+                'Lista actual de tareas pendientes',
+                '### User:'
             ];
 
             foreach ($puntosDeCorte as $corte) {
@@ -161,7 +151,6 @@ switch ($accion) {
                     $stmt = $pdo->prepare("INSERT INTO chat_mensajes (remitente, mensaje) VALUES ('nexus', ?)");
                     $stmt->execute([$respuestaIA]);
                     
-                    // Registro en auditoría
                     registrarLog('chat_backend', 'mensaje_procesado', 'Respuesta generada y guardada correctamente.', 'success');
                 } catch (Exception $e) {
                     registrarLog('chat_backend', 'error_bd_nexus', $e->getMessage(), 'error');
@@ -173,7 +162,7 @@ switch ($accion) {
                 'respuesta' => $respuestaIA
             ]);
         } else {
-            registrarLog('chat_backend', 'error_respuesta', 'Respuesta inválida o vacía de KoboldCpp', 'error');
+            registrarLog('chat_backend', 'error_respuesta', 'Respuesta inválida o vacía de KoboldCpp', 'error');
             echo json_encode([
                 'status' => 'error',
                 'mensaje' => 'Respuesta no válida de KoboldCpp.'
