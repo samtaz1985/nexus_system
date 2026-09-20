@@ -122,12 +122,16 @@ switch ($accion) {
         if (is_array($data) && isset($data['results'][0]['text'])) {
             $respuestaIA = trim($data['results'][0]['text']);
 
-            // Puntos de corte para evitar eco
+            // Puntos de corte estrictos para detener la cadena en el primer intento de alucinacion
             $puntosDeCorte = [
+                '=== CONTEXTO',
+                '=== CONTEXTO REAL',
                 '=== CONTEXTO DEL SISTEMA ===',
-                'Reglas y memorias activas del sistema:',
-                'Lista actual de tareas pendientes',
-                '### User:'
+                'Reglas y memorias activas',
+                'Lista actual de tareas',
+                '### User:',
+                '### System:',
+                '### Assistant:'
             ];
 
             foreach ($puntosDeCorte as $corte) {
@@ -136,11 +140,11 @@ switch ($accion) {
                 }
             }
 
-            // Sanitización backend
+            // Sanitización regex para eliminar residuos de etiquetas
             $patronesLimpieza = [
                 '/=== (BEGINNING|END) OF (CONTEXT|RESPONSE) ===/i',
-                '/=== CONTEXTO (DEL SISTEMA|REAL) ===/i',
-                '/=== CONTEXTO ===/i',
+                '/=== CONTEXTO (DEL SISTEMA|REAL|SISTEMA)? ===?/i',
+                '/=== CONTEXTO.*/i',
                 '/### (User|Assistant|System):/i'
             ];
             $respuestaIA = trim(preg_replace($patronesLimpieza, '', $respuestaIA));
