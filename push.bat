@@ -1,3 +1,3 @@
-git add js/subsistema.js
-git commit -m "feat: integrar control de subsistema IA en frontend"
+git add .
+git commit -m "Actualización de la interfaz y ajustes de parámetros del motor"
 git push origin main
