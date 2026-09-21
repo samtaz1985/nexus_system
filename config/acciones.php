@@ -85,13 +85,16 @@ switch ($accion) {
             }
 
             // Inyección de memoria RAG
-            $contextoMemoriaRaw = function_exists('obtenerContextoRelevante') ? obtenerContextoRelevante($mensaje, 5) : '';
+            $contextoMemoriaRaw = function_exists('obtenerContextoRelevante') ? obtenerContextoRelevante($mensaje, $pdo) : '';
             $contextoMemoria = !empty($contextoMemoriaRaw) 
                 ? "\n\nReglas y memorias activas del sistema:\n" . $contextoMemoriaRaw 
                 : "";
 
-            $systemPrompt = "Eres NIAH, la inteligencia artificial integrada al panel local 'Nexus System'.\n"
-              . "Responde de forma directa, técnica y concisa sin repetir las instrucciones del sistema ni incluir frases de cortesía innecesarias.\n\n"
+            $systemPrompt = "Eres NIAH, la inteligencia artificial integrada a Nexus System.\n"
+              . "Antes de responder, analiza la solicitud dentro de las etiquetas <pensamiento>...</pensamiento> guiándote por estas reglas:\n"
+              . "1. Analiza los datos en CONTEXTO REAL e interpreta las tareas y memorias proporcionadas abajo.\n"
+              . "2. NO generes código SQL de respuesta si los datos ya están disponibles en el contexto; responde directamente al usuario con información procesada.\n"
+              . "3. Formula la respuesta final fuera de las etiquetas de forma técnica, limpia y concisa en español.\n\n"
               . "=== CONTEXTO REAL ===\n"
               . $contextoTareas . "\n"
               . $contextoMemoria;
@@ -103,9 +106,9 @@ switch ($accion) {
             $payload = json_encode([
                 'prompt' => $promptCompleto,
                 'max_context_length' => 2048,
-                'max_length' => 512,             // Aumentado a 512 para evitar cortes abruptos
-                'temperature' => 0.16,            // Ligera variación para evitar frases idénticas
-                'rep_pen' => 1.18,               // Penalización de repetición para eliminar muletillas
+                'max_length' => 512,
+                'temperature' => 0.16,
+                'rep_pen' => 1.18,
                 'stop_sequence' => ["### User:", "### System:", "### Assistant:", "=== CONTEXTO", "=== END"]
             ]);
 
@@ -123,7 +126,16 @@ switch ($accion) {
             $data = json_decode($response, true);
             $respuestaIA = trim($data['results'][0]['text'] ?? 'Sin respuesta del motor de IA.');
 
-        // Sanitización estricta contra alucinaciones de cierre
+            // Extracción y log del pensamiento interno de NIAH
+            if (preg_match('/<pensamiento>(.*?)<\/pensamiento>/s', $respuestaIA, $matches)) {
+                $pensamientoInterno = trim($matches[1]);
+                if (function_exists('registrarLog')) {
+                    registrarLog('niah_reasoning', 'pensamiento', $pensamientoInterno, 'info');
+                }
+                $respuestaIA = preg_replace('/<pensamiento>(.*?)<\/pensamiento>/s', '', $respuestaIA);
+            }
+
+            // Sanitización estricta contra alucinaciones de cierre
             $puntosDeCorte = ['=== CONTEXTO', '=== END', '### User:', 'SIEMPRE EN ESPAÑOL'];
             foreach ($puntosDeCorte as $corte) {
                 if (($pos = strpos($respuestaIA, $corte)) !== false) {

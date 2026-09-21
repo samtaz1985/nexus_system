@@ -18,7 +18,7 @@ if (!isset($pdo)) {
 }
 
 try {
-    $stmt = $pdo->query("SELECT id, texto FROM tareas WHERE completada = 0 ORDER BY id ASC LIMIT 1");
+    $stmt = $pdo->query("SELECT id, texto FROM tareas WHERE completada = 0 AND (resultado_ia IS NULL OR resultado_ia = '') ORDER BY id ASC LIMIT 1");
     $tarea = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$tarea) {
@@ -32,7 +32,7 @@ try {
     exit;
 }
 
-// Consultar memorias
+// Consultar memorias activas
 $contextoMemoria = "";
 try {
     $stmtMem = $pdo->query("SELECT tipo, clave, valor FROM nexus_memoria ORDER BY relevancia DESC LIMIT 5");
@@ -47,9 +47,11 @@ try {
 } catch (Exception $e) {}
 
 $systemPrompt = "Eres NIAH, el motor autónomo de Nexus System.\n"
-              . "Tu objetivo es analizar la siguiente tarea y generar un plan técnico breve o la solución directa para resolverla.\n"
-              . "Reglas: Sé conciso, técnico, directo y responde en español.\n\n"
-              . "=== REGLAS DEL SISTEMA ===\n" . $contextoMemoria;
+              . "Antes de responder, analiza la solicitud dentro de las etiquetas <pensamiento>...</pensamiento> guiándote por estas reglas:\n"
+              . "1. Evalúa el objetivo de la tarea técnica.\n"
+              . "2. Genera una solución o plan de acción directo en texto plano (NO utilices JSON ni estructuras complejas).\n"
+              . "3. Formula el resultado final fuera de las etiquetas de forma técnica, limpia y en español.\n\n"
+              . "=== REGLAS Y MEMORIAS DEL SISTEMA ===\n" . $contextoMemoria;
 
 $promptCompleto = "### System:\n" . $systemPrompt . "\n\n"
                 . "### User:\nAnaliza y propone la solución técnica para la tarea ID [" . $tarea['id'] . "]: " . $tarea['texto'] . "\n\n"
@@ -58,10 +60,11 @@ $promptCompleto = "### System:\n" . $systemPrompt . "\n\n"
 $payload = json_encode([
     'prompt' => $promptCompleto,
     'max_context_length' => 2048,
-    'max_length' => 200,
-    'temperature' => 0.1,
+    'max_length' => 512,
+    'temperature' => 0.16,
     'top_p' => 0.85,
-    'rep_pen' => 1.2
+    'rep_pen' => 1.18,
+    'stop_sequence' => ["### User:", "### System:", "### Assistant:", "=== REGLAS", "=== END", "=== FIN"]
 ]);
 
 $ch = curl_init('http://127.0.0.1:5001/api/v1/generate');
@@ -86,16 +89,26 @@ $data = json_decode($response, true);
 if (is_array($data) && isset($data['results'][0]['text'])) {
     $resultadoIA = trim($data['results'][0]['text']);
 
-    if (($pos = strpos($resultadoIA, '=== REGLAS DEL SISTEMA ===')) !== false) {
-        $resultadoIA = substr($resultadoIA, 0, $pos);
+    // Extracción y log del pensamiento interno de NIAH
+    if (preg_match('/<pensamiento>(.*?)<\/pensamiento>/s', $resultadoIA, $matches)) {
+        $pensamientoInterno = trim($matches[1]);
+        if (function_exists('registrarLog')) {
+            registrarLog('niah_reasoning', 'pensamiento_cron', "Tarea ID [{$tarea['id']}]: " . $pensamientoInterno, 'info');
+        }
+        $resultadoIA = preg_replace('/<pensamiento>(.*?)<\/pensamiento>/s', '', $resultadoIA);
     }
-    $resultadoIA = trim(preg_replace('/### (User|Assistant|System):/i', '', $resultadoIA));
+
+    // Limpieza profunda contra bucles de cierre (=== FIN DE... ===, === REGLAS... ===, etc.)
+    $resultadoIA = preg_replace('/===\s*(FIN|REGLAS|END).*$/is', '', $resultadoIA);
+    $resultadoIA = preg_replace('/###\s*(User|Assistant|System):?/i', '', $resultadoIA);
+
+    $resultadoIA = trim($resultadoIA);
 
     try {
         $update = $pdo->prepare("UPDATE tareas SET resultado_ia = ?, fecha_procesado = NOW() WHERE id = ?");
         $update->execute([$resultadoIA, $tarea['id']]);
 
-        // Registrar exito en logs
+        // Registrar éxito en logs
         registrarLog('cron_tareas', 'tarea_procesada', "Tarea ID [{$tarea['id']}] analizada con éxito por NIAH.", 'success');
 
         echo json_encode([
@@ -108,7 +121,7 @@ if (is_array($data) && isset($data['results'][0]['text'])) {
         echo json_encode(['status' => 'error', 'mensaje' => 'Error al actualizar BD: ' . $e->getMessage()]);
     }
 } else {
-    registrarLog('cron_tareas', 'error_respuesta_ia', 'Respuesta inválida o vacía de KoboldCpp', 'error');
+    registrarLog('cron_tareas', 'error_respuesta_ia', 'Respuesta inválida o vacía de KoboldCpp', 'error');
     echo json_encode(['status' => 'error', 'mensaje' => 'Respuesta no válida de KoboldCpp.']);
 }
 exit;

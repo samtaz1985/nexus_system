@@ -2,24 +2,28 @@
 // config/rag.php
 require_once __DIR__ . '/db.php';
 
-function obtenerContextoRelevante($mensajeUsuario, $limit = 5) {
+function obtenerContextoRelevante($mensajeUsuario, $pdoParam = null, $limit = 5) {
     global $pdo;
-    if (!isset($pdo)) return "";
+    $db = $pdoParam ?? $pdo;
 
-    // Sanitizar y extraer palabras clave significativas (longitud > 3)
+    if (!isset($db)) {
+        return "";
+    }
+
+    // Extraer palabras clave significativas (longitud > 3)
     $palabras = preg_split('/\s+/', mb_strtolower($mensajeUsuario));
     $palabrasClave = array_filter($palabras, function($p) {
         return mb_strlen($p) > 3;
     });
 
     if (empty($palabrasClave)) {
-        // Si la frase es muy corta o genérica, traer las memorias con mayor relevancia
-        $stmt = $pdo->prepare("SELECT tipo, clave, valor FROM nexus_memoria ORDER BY relevancia DESC LIMIT ?");
+        // Frase corta o genérica: traer memorias con mayor relevancia
+        $stmt = $db->prepare("SELECT tipo, clave, valor FROM nexus_memoria ORDER BY relevancia DESC LIMIT ?");
         $stmt->bindValue(1, (int)$limit, PDO::PARAM_INT);
         $stmt->execute();
         $memorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
-        // Construir consulta dinámica con LIKE por cada palabra clave
+        // Consulta dinámica con LIKE por palabras clave en clave, valor o tipo
         $whereClauses = [];
         $params = [];
 
@@ -32,20 +36,22 @@ function obtenerContextoRelevante($mensajeUsuario, $limit = 5) {
         }
 
         $sql = "SELECT tipo, clave, valor, relevancia FROM nexus_memoria WHERE " . implode(' OR ', $whereClauses) . " ORDER BY relevancia DESC LIMIT " . (int)$limit;
-        $stmt = $pdo->prepare($sql);
+        $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $memorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Si no hay coincidencias específicas, recurrir a las memorias más relevantes por defecto
+        // Respaldar con memorias por defecto si no hay coincidencia
         if (empty($memorias)) {
-            $stmtDef = $pdo->prepare("SELECT tipo, clave, valor FROM nexus_memoria ORDER BY relevancia DESC LIMIT ?");
+            $stmtDef = $db->prepare("SELECT tipo, clave, valor FROM nexus_memoria ORDER BY relevancia DESC LIMIT ?");
             $stmtDef->bindValue(1, (int)$limit, PDO::PARAM_INT);
             $stmtDef->execute();
             $memorias = $stmtDef->fetchAll(PDO::FETCH_ASSOC);
         }
     }
 
-    if (empty($memorias)) return "";
+    if (empty($memorias)) {
+        return "";
+    }
 
     $mLista = [];
     foreach ($memorias as $m) {
