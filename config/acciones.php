@@ -4,6 +4,8 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/logger.php';
 require_once __DIR__ . '/rag.php';
 require_once __DIR__ . '/tools.php';
+require_once __DIR__ . '/agente.php'; // Incluimos el orquestador de agentes
+
 
 if (file_exists(__DIR__ . '/kobold_control.php')) {
     require_once __DIR__ . '/kobold_control.php';
@@ -70,11 +72,19 @@ if (isset($_GET['accion'])) {
 }
 
 // -------------------------------------------------------------------------
-// MOTOR PRINCIPAL DE PROCESAMIENTO IA
+// MOTOR PRINCIPAL DE PROCESAMIENTO IA (CON CAPA DE AGENTE Y REASONING)
 // -------------------------------------------------------------------------
 function procesarAccionIA($prompt) {
     global $pdo;
     $promptTrim = trim($prompt);
+
+    // 1. ANÁLISIS DE INTENCIÓN Y HERRAMIENTAS (Orquestador ReAct)
+    $intencionDetectada = function_exists('analizarIntencion') ? analizarIntencion($promptTrim) : ['accion' => 'chat_interno', 'parametro' => null];
+    
+    $resultadoHerramienta = "";
+    if ($intencionDetectada['accion'] !== 'chat_interno' && function_exists('ejecutarHerramienta')) {
+        $resultadoHerramienta = ejecutarHerramienta($intencionDetectada);
+    }
 
     // Auto-activación de KoboldCpp y obtención de estado real
     $estadoMotorStr = "OFFLINE";
@@ -106,13 +116,17 @@ function procesarAccionIA($prompt) {
     // Contexto RAG
     $contextoMemoria = function_exists('consultarMemoriaRAG') ? consultarMemoriaRAG($promptTrim) : "";
 
-    // System prompt con telemetría real inyectada para evitar alucinaciones
+    // Construcción del bloque de datos externos si la herramienta arrojó resultados
+    $bloqueHerramientas = !empty($resultadoHerramienta) ? "=== DATOS EXTERNOS CAPTURADOS POR HERRAMIENTAS ===\n" . $resultadoHerramienta . "\n\n" : "";
+
+    // System prompt con telemetría real y datos de herramientas inyectados
     $systemPrompt = "Eres NIAH, la inteligencia artificial central de Nexus System.\n"
-                  . "Responde siempre de forma precisa y directa al usuario basándote en la información del sistema.\n\n"
+                  . "Responde siempre de forma precisa y directa al usuario basándote en la información del sistema y herramientas.\n\n"
                   . "=== TELEMETRÍA DEL SISTEMA EN TIEMPO REAL ===\n"
                   . "- Estado del Motor IA (KoboldCpp): " . $estadoMotorStr . "\n"
                   . $contextoTareas . "\n"
-                  . $contextoMemoria;
+                  . $contextoMemoria . "\n\n"
+                  . $bloqueHerramientas;
 
     $promptCompleto = "### System:\n" . $systemPrompt . "\n\n### User:\n" . $promptTrim . "\n\n### Assistant:\n";
 
@@ -122,8 +136,8 @@ function procesarAccionIA($prompt) {
         'max_length' => 512,
         'temperature' => 0.16,
         'top_p' => 0.85,
-        'repeat_penalty' => 1.15,   // Evita que repita frases o bloques completos
-        'rep_pen_range' => 380,     // Rango de penalización para evitar bucles largos
+        'repeat_penalty' => 1.2,   // Evita que repita frases o bloques completos
+        'rep_pen_range' => 430,    // Rango de penalización para evitar bucles largos
         'stop_sequence' => ["### User:", "### System:", "### Assistant:", "===", "TAREAS PENDIENTES:"]
     ]);
 
