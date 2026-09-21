@@ -123,6 +123,7 @@ function procesarAccionIA($prompt) {
         'temperature' => 0.16,
         'top_p' => 0.85,
         'repeat_penalty' => 1.15,   // Evita que repita frases o bloques completos
+        'rep_pen_range' => 380,     // Rango de penalización para evitar bucles largos
         'stop_sequence' => ["### User:", "### System:", "### Assistant:", "===", "TAREAS PENDIENTES:"]
     ]);
 
