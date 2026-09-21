@@ -11,12 +11,13 @@
 
         <!-- Sidebar / Navegación -->
         <?php include 'includes/sidebar.php'; ?>
+        
 
         <!-- Contenido Dinámico de Módulos -->
         <main class="main-content" style="flex: 1; padding: 20px; box-sizing: border-box; overflow-y: auto;">
             <?php 
-                // Lista blanca de módulos autorizados
-                $modulosPermitidos = ['dashboard', 'chat', 'tareas', 'memoria', 'configuracion', 'logs'];
+                // Lista blanca de módulos autorizados (incluyendo supervision)
+                $modulosPermitidos = ['dashboard', 'chat', 'tareas', 'memoria', 'configuracion', 'logs', 'supervision'];
                 
                 // Sanitización del parámetro GET
                 $modulo = isset($_GET['mod']) && in_array($_GET['mod'], $modulosPermitidos) ? $_GET['mod'] : 'dashboard';
@@ -32,6 +33,6 @@
     
     </div>
 
-    <script src="js/subsistema.js"></script>
+    <script src="js/status_api_motor.js"></script>
 </body>
 </html>

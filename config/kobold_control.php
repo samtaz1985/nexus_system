@@ -2,72 +2,49 @@
 // config/kobold_control.php
 
 class KoboldControl {
-    private $host = 'http://127.0.0.1:5001';
-    private $launcherPath;
-    private $workingDir;
+    private $puerto = 5001;
+    private $host = '127.0.0.1';
 
-    public function __construct() {
-        // Normalizar rutas para evitar fallos de escape en Windows
-        $this->workingDir = __DIR__;
-        $this->launcherPath = __DIR__ . DIRECTORY_SEPARATOR . 'lanzador_ia.exe';
-    }
-
-    /**
-     * Verifica si el puerto 5001 está respondiendo.
-     */
+    // Verifica si KoboldCpp responde en el puerto 5001
     public function estaActivo() {
-        $ch = curl_init($this->host . '/api/v1/model');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        return ($httpCode === 200);
+        $connection = @fsockopen($this->host, $this->puerto, $errno, $errstr, 1.5);
+        if (is_resource($connection)) {
+            fclose($connection);
+            return true;
+        }
+        return false;
     }
 
-    /**
-     * Inicia el subsistema ejecutando lanzador_ia.exe forzando el directorio de trabajo.
-     */
+    // Ejecuta el lanzador o el binario .exe directamente
     public function iniciar() {
         if ($this->estaActivo()) {
-            return ["status" => "ok", "message" => "El subsistema ya está activo."];
+            return true; 
         }
 
-        if (!file_exists($this->launcherPath)) {
-            return ["status" => "error", "message" => "No se encontró el ejecutable: " . $this->launcherPath];
-        }
-
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            // cd /d impone el directorio donde reside lanzador_ia.exe antes de invocarlo
-            $cmd = 'cmd /c "cd /d "' . $this->workingDir . '" && start /B "" "' . $this->launcherPath . '""';
+        $baseDir = __DIR__;
+        
+        if (stristr(PHP_OS, 'WIN')) {
+            // Busca el ejecutable .exe en la carpeta config o la ruta que manejes
+            // Puedes apuntar directamente al ejecutable compilado
+            $cmd = "start /B \"\" \"" . $baseDir . "\\lanzador_ia.exe\" > \"" . $baseDir . "\\kobold.log\" 2>&1";
             pclose(popen($cmd, "r"));
         } else {
-            $cmd = 'cd "' . $this->workingDir . '" && "' . $this->launcherPath . '" > /dev/null 2>&1 &';
+            $cmd = "nohup \"" . $baseDir . "/lanzador_ia\" > \"" . $baseDir . "/kobold.log\" 2>&1 &";
             exec($cmd);
         }
 
-        return ["status" => "ok", "message" => "Iniciando subsistema IA en segundo plano..."];
+        sleep(3); 
+        return $this->estaActivo();
     }
 
-    /**
-     * Detiene el proceso koboldcpp.exe y el lanzador si sigue en ejecución.
-     */
+    // Cierra el proceso si se requiere
     public function detener() {
-        if (!$this->estaActivo()) {
-            return ["status" => "ok", "message" => "El subsistema ya está apagado."];
-        }
-
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            exec("taskkill /F /IM koboldcpp.exe /T 2>&1");
-            exec("taskkill /F /IM lanzador_ia.exe /T 2>&1");
+        if (stristr(PHP_OS, 'WIN')) {
+            exec("taskkill /F /IM lanzador_ia.exe /T 2>NUL");
+            exec("taskkill /F /IM koboldcpp.exe /T 2>NUL");
         } else {
-            exec("pkill -f koboldcpp");
             exec("pkill -f lanzador_ia");
+            exec("pkill -f koboldcpp");
         }
-
-        return ["status" => "ok", "message" => "Subsistema detenido correctamente."];
     }
 }

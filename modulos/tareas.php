@@ -17,13 +17,14 @@ if (isset($_GET['fetch_json']) &&$_GET['fetch_json'] == '1') {
 // Manejo de acciones POST tradicionales (Agregar / Completar)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_tarea'])) {
     if ($_POST['accion_tarea'] === 'agregar' && !empty($_POST['texto'])) {
-        $stmt =$pdo->prepare("INSERT INTO tareas (texto, completada) VALUES (?, 0)");
+        $stmt = $pdo->prepare("INSERT INTO tareas (texto, completada) VALUES (?, 0)");
         $stmt->execute([trim($_POST['texto'])]);
     } elseif ($_POST['accion_tarea'] === 'completar' && isset($_POST['id'])) {
-        $stmt =$pdo->prepare("UPDATE tareas SET completada = 1 WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE tareas SET completada = 1 WHERE id = ?");
         $stmt->execute([$_POST['id']]);
     }
-    header("Location: dashboard.php?mod=tareas");
+    // Corregido: sube un nivel para apuntar correctamente al enrutador principal
+    header("Location: index.php?mod=tareas");
     exit;
 }
 

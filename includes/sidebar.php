@@ -1,30 +1,40 @@
-<!-- includes/sidebar.php -->
-<aside class="sidebar">
-    <div class="brand">
-        <h2 style="color: var(--accent-blue, #00d2ff); margin: 0; font-size: 1.2rem;">Nexus System</h2>
-        <span style="color: #4cd137; font-size: 0.75rem;">● Sistema Operativo</span>
-    </div>
-    
-    <!-- Control del Subsistema Nexus IA -->
-    <div id="subsistema-control" style="margin: 20px 10px 10px 10px; padding: 12px; background: #1a1d29; border-radius: 8px; border: 1px solid var(--border-color, #2a2d3d); display: flex; flex-direction: column; gap: 10px;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-            <span style="color: #6c757d; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Motor IA</span>
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span class="ia-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #ff4d4d; display: inline-block;"></span>
-                <span class="ia-status-text" style="color: #fff; font-size: 0.8rem; font-weight: bold;">Offline</span>
-            </div>
-        </div>
-        <button class="ia-status-btn" onclick="toggleMotorIA()" style="background: var(--accent-blue, #00d2ff); color: #000; font-weight: bold; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; width: 100%; transition: all 0.2s;">
-            Encender Motor
-        </button>
+<?php
+// includes/sidebar.php
+require_once __DIR__ . '/../config/kobold_control.php';
+
+$koboldSide = new KoboldControl();
+$isOnline = $koboldSide->estaActivo();
+$estadoMotor = $isOnline ? 'ONLINE' : 'OFFLINE';
+$colorStatus = $isOnline ? '#00e676' : '#ff4d4d';
+$bgStatus = $isOnline ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 77, 77, 0.15)';
+?>
+
+<aside style="width: 240px; background: #1a1d29; border-right: 1px solid var(--border-color, #2a2d3d); height: 100vh; display: flex; flex-direction: column; padding: 20px 10px; box-sizing: border-box;">
+    <div style="padding: 0 10px 20px 10px; border-bottom: 1px solid var(--border-color, #2a2d3d); margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #fff; font-size: 1.2rem;">Nexus System</h3>
+        <span style="font-size: 0.75rem; color: #8a8f9d;">Panel de Control</span>
     </div>
 
-    <nav class="sidebar-nav" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
-        <a href="index.php?mod=dashboard" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">📊 Dashboard</a>
-        <a href="index.php?mod=chat" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">🤖 Chat IA Local</a>
-        <a href="index.php?mod=tareas" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">📋 Tareas y Notas</a>
-        <a href="index.php?mod=memoria" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">🧠 Memoria</a>
-        <a href="index.php?mod=configuracion" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">⚙️ Configuración</a>
-        <a href="index.php?mod=logs" style="color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.05); display: block;">📜 Auditoría Logs</a>
+    <nav style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+        <a href="index.php?mod=dashboard" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">
+            📊 <span>Dashboard</span>
+        </a>
+        <a href="index.php?mod=chat" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">
+            🤖 <span>Chat NIAH</span>
+        </a>
+        <a href="index.php?mod=tareas" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">
+            📋 <span>Gestor de Tareas</span>
+        </a>
+        <a href="index.php?mod=supervision" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">
+            ⚙️ <span>Supervisión y Motor</span>
+        </a>
     </nav>
+
+    <!-- Tarjeta del motor con ID para actualización en tiempo real vía JavaScript -->
+    <div id="sidebar-motor-card" style="padding: 12px; background: #0f111a; border: 1px solid var(--border-color, #2a2d3d); border-radius: 8px; text-align: center; margin-top: auto; background-color: <?php echo $bgStatus; ?>;">
+        <div style="font-size: 0.8rem; color: #8a8f9d; margin-bottom: 6px;">Motor KoboldCpp</div>
+        <div id="sidebar-motor-status" style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; color: <?php echo $colorStatus; ?>;">
+            ● <?php echo $estadoMotor; ?>
+        </div>
+    </div>
 </aside>

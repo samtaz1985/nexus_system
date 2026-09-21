@@ -1,6 +1,13 @@
 <?php
 // modulos/dashboard.php
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/kobold_control.php';
+
+$koboldSide = new KoboldControl();
+$isOnline = $koboldSide->estaActivo();
+$estadoMotor = $isOnline ? 'ONLINE' : 'OFFLINE';
+$colorStatus = $isOnline ? '#00e676' : '#ff4d4d';
+$bgStatus = $isOnline ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 77, 77, 0.15)';
 
 // Consultas directas de métricas para precargar datos rápido
 $totalTareas = 0;
@@ -36,7 +43,12 @@ if (isset($pdo)) {
         
         <div class="metric-card" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
             <h3 style="margin: 0; font-size: 0.85rem; color: var(--text-muted, #a8a8b3); text-transform: uppercase;">Estado del Motor</h3>
-            <p id="dash-ia-status" style="font-size: 1.6rem; font-weight: bold; margin: 10px 0 0 0; color: #ff4d4d;">Cargando...</p>
+            <!-- Contenedor con estilo limpio para el estado del motor -->
+            <div id="dash-ia-status-container" style="display: inline-block; padding: 4px 10px; border-radius: 6px; margin-top: 10px; background: <?php echo $bgStatus; ?>">
+                <p id="dash-ia-status" style="font-size: 1.4rem; font-weight: bold; margin: 0; color: <?php echo $colorStatus; ?>;">
+                    ● <?php echo $estadoMotor; ?>
+                </p>
+            </div>
         </div>
 
         <div class="metric-card" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
@@ -63,47 +75,6 @@ if (isset($pdo)) {
         <a href="index.php?mod=chat" style="padding: 10px 20px; background: #4a6fa5; color: #fff; font-weight: bold; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">🤖 Ir al Chat IA</a>
         <a href="index.php?mod=tareas" style="padding: 10px 20px; background: rgba(255,255,255,0.08); color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">📋 Ver Tareas</a>
         <a href="index.php?mod=memoria" style="padding: 10px 20px; background: rgba(255,255,255,0.08); color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">💾 Gestionar Memoria</a>
-        <!-- Nuevo acceso a Logs -->
         <a href="index.php?mod=logs" style="padding: 10px 20px; background: rgba(255,255,255,0.08); color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">📜 Auditoría Logs</a>
     </div>
 </div>
-
-<script>
-(function() {
-    async function cargarEstadoMotor() {
-        try {
-            const res = await fetch('api/subsistema.php');
-            const data = await res.json();
-            
-            // Actualizar estado de IA (KoboldCpp)
-            const elemIA = document.getElementById('dash-ia-status');
-            if (elemIA) {
-                const iaActiva = data.servicios && data.servicios.koboldcpp;
-                elemIA.innerText = iaActiva ? 'ONLINE' : 'OFFLINE';
-                elemIA.style.color = iaActiva ? '#00e676' : '#ff4d4d';
-            }
-
-            // Opcional: Si tienes un indicador para la BD en el HTML, puedes descomentar esto
-            /*
-            const elemDB = document.getElementById('dash-db-status');
-            if (elemDB) {
-                const dbActiva = data.servicios && data.servicios.database;
-                elemDB.innerText = dbActiva ? 'ONLINE' : 'OFFLINE';
-                elemDB.style.color = dbActiva ? '#00e676' : '#ff4d4d';
-            }
-            */
-        } catch (e) {
-            const elemIA = document.getElementById('dash-ia-status');
-            if (elemIA) {
-                elemIA.innerText = 'OFFLINE';
-                elemIA.style.color = '#ff4d4d';
-            }
-        }
-    }
-
-    cargarEstadoMotor();
-    
-    // Ejecutar cada 10 segundos para mantener el monitoreo en tiempo real
-    setInterval(cargarEstadoMotor, 10000);
-})();
-</script>

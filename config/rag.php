@@ -60,3 +60,8 @@ function obtenerContextoRelevante($mensajeUsuario, $pdoParam = null, $limit = 5)
 
     return implode("\n", $mLista);
 }
+
+// Alias de compatibilidad para el resto del sistema
+function consultarMemoriaRAG($mensajeUsuario, $pdoParam = null, $limit = 5) {
+    return obtenerContextoRelevante($mensajeUsuario, $pdoParam, $limit);
+}
