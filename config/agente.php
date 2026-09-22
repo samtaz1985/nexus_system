@@ -32,6 +32,21 @@ function extraerUbicacion($texto) {
     return 'santiago'; // Por defecto
 }
 
+function registrarReflexion($pensamiento, $tipo = 'evolucion') {
+    global $pdo;
+    if (!isset($pdo) || !$pdo) {
+        return false;
+    }
+    try {
+        $stmt = $pdo->prepare("INSERT INTO niah_reflexiones (pensamiento, tipo) VALUES (?, ?)");
+        $stmt->execute([$pensamiento, $tipo]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+
 function ejecutarHerramienta($intencion) {
     // 1. Herramienta de Clima (Open-Meteo)
     if ($intencion['accion'] === 'obtener_clima') {
