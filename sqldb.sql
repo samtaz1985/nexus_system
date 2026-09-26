@@ -52,3 +52,5 @@ CREATE TABLE IF NOT EXISTS niah_reflexiones (
     tipo VARCHAR(50) DEFAULT 'general',
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO tareas (texto, completada) VALUES ('Optimizar la consulta de asistencia en el módulo de atletas', 0);
